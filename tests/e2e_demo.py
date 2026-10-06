@@ -41,6 +41,10 @@ def main():
         # Fonts come from Google; offline here, so block quietly.
         page.route("**/fonts.googleapis.com/**", lambda r: r.abort())
         page.route("**/fonts.gstatic.com/**", lambda r: r.abort())
+        # Force demo mode regardless of the real Supabase details in config.js
+        page.route("**/config.js", lambda r: r.fulfill(
+            content_type="text/javascript",
+            body="export default { supabaseUrl: '', supabaseKey: '' };"))
         page.on("console", lambda m: m.type == "error" and "Failed to load resource" not in m.text and errors.append(m.text))
         page.on("requestfailed", lambda r: "fonts.g" not in r.url and errors.append(f"request failed: {r.url}"))
         page.on("pageerror", lambda e: errors.append(str(e)))

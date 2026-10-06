@@ -4,6 +4,6 @@
 //
 // NEVER put the service_role / secret key here.
 export default {
-  supabaseUrl: '',
-  supabaseKey: '', // the anon / publishable key
+  supabaseUrl: 'https://httmfnzwmhadacqiefkw.supabase.co',
+  supabaseKey: 'sb_publishable_ORqyu6OZjhc_ldkMYFpQSA_d-VPF7ZX', // publishable key
 };
