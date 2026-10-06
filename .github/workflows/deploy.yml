@@ -95,10 +95,28 @@ jobs:
           version: latest
       - name: Link project
         if: steps.check.outputs.ready == 'true'
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        run: |
+          set -o pipefail
+          if ! supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1 | tee out.log; then
+            msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
+            echo "::error title=Link project failed::$msg"
+            exit 1
+          fi
       - name: Apply database migrations
         if: steps.check.outputs.ready == 'true'
-        run: supabase db push
+        run: |
+          set -o pipefail
+          if ! supabase db push 2>&1 | tee out.log; then
+            msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
+            echo "::error title=Database migrations failed::$msg"
+            exit 1
+          fi
       - name: Deploy Edge Functions
         if: steps.check.outputs.ready == 'true'
-        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+        run: |
+          set -o pipefail
+          if ! supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" 2>&1 | tee out.log; then
+            msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
+            echo "::error title=Edge Functions deploy failed::$msg"
+            exit 1
+          fi
