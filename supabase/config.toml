@@ -1,0 +1,10 @@
+# Minimal Supabase CLI config. The real project is chosen by `supabase link`.
+project_id = "lingonberrymedia"
+
+# Both functions check for a signed-in user themselves (requireUser), which
+# works with both legacy and new-style Supabase API keys.
+[functions.tmdb]
+verify_jwt = false
+
+[functions.post-lineup]
+verify_jwt = false
