@@ -93,21 +93,35 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         with:
           version: latest
-      - name: Link project
+      - name: Find database connection
         if: steps.check.outputs.ready == 'true'
+        id: db
         run: |
-          set -o pipefail
-          if ! supabase link --debug --project-ref "$SUPABASE_PROJECT_REF" 2>&1 | tee out.log; then
-            echo "::error title=Link debug::$(grep -E "HTTP GET|HTTP POST|Status|status" out.log | tail -n 12 | tr "\n" " " | cut -c1-900)"
-            msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
-            echo "::error title=Link project failed::$msg"
+          # Ask the Management API for the connection pooler host (needs only
+          # Connection Pooling: Read), then build the URL with the DB password.
+          # This avoids `supabase link`, which wants access to secret API keys.
+          code=$(curl -sS -o pooler.json -w '%{http_code}' \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/database/pooler")
+          if [ "$code" != "200" ]; then
+            echo "::error title=Pooler lookup failed::HTTP $code $(head -c 400 pooler.json)"
             exit 1
           fi
+          url=$(python3 - <<'PY'
+          import json, os, urllib.parse
+          cfg = json.load(open("pooler.json"))
+          cfg = cfg[0] if isinstance(cfg, list) else cfg
+          pw = urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe="")
+          print(f"postgresql://{cfg['db_user']}:{pw}@{cfg['db_host']}:5432/{cfg.get('db_name') or 'postgres'}")
+          PY
+          )
+          echo "::add-mask::$url"
+          echo "DB_URL=$url" >> "$GITHUB_ENV"
       - name: Apply database migrations
         if: steps.check.outputs.ready == 'true'
         run: |
           set -o pipefail
-          if ! supabase db push 2>&1 | tee out.log; then
+          if ! supabase db push --db-url "$DB_URL" --include-all 2>&1 | tee out.log; then
             msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
             echo "::error title=Database migrations failed::$msg"
             exit 1
