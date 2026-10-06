@@ -97,7 +97,8 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: |
           set -o pipefail
-          if ! supabase link --project-ref "$SUPABASE_PROJECT_REF" 2>&1 | tee out.log; then
+          if ! supabase link --debug --project-ref "$SUPABASE_PROJECT_REF" 2>&1 | tee out.log; then
+            echo "::error title=Link debug::$(grep -E "HTTP GET|HTTP POST|Status|status" out.log | tail -n 12 | tr "\n" " " | cut -c1-900)"
             msg=$(tail -n 8 out.log | tr '\n' ' ' | cut -c1-900)
             echo "::error title=Link project failed::$msg"
             exit 1
